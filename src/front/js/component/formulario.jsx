@@ -31,14 +31,14 @@ export const Formulario = ({ type }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-       
+
         if (!formData.email || !formData.password) {
             console.log("Por favor, completa los campos obligatorios.");
             return;
         }
 
         console.log("Submit data:", formData, "type:", type);
-        
+
         if (type === "login") {
             const aux = await actions.login(formData)
             return navigate(aux)
@@ -50,9 +50,9 @@ export const Formulario = ({ type }) => {
     };
 
     return (
-        <form  onSubmit={handleSubmit}>
+        <form class="form" onSubmit={handleSubmit}>
             <div className="m-3" >
-                <label htmlFor="email" className="form-label m-1">Email</label>
+                <label htmlFor="email" className="form-label m-1 sub_title">Email</label>
                 <input
                     type="email"
                     id="email"
@@ -65,7 +65,7 @@ export const Formulario = ({ type }) => {
                 />
             </div>
             <div className="m-3">
-                <label htmlFor="password" className="form-label m-1">Contraseña</label>
+                <label htmlFor="password" className="form-label m-1 sub_title">Contraseña</label>
                 <input
                     type="password"
                     id="password"
@@ -79,23 +79,24 @@ export const Formulario = ({ type }) => {
             </div>
             {type !== 'login' && (
                 <>
-                <div className="m-3">
-                    <label  id="role" htmlFor="role" className="form-label m-1">Role</label>
-                    <select name="role"  className="form-select" value={formData.player ? "player" : "host"} onChange={handleRoleChange}>
-                        <option value="player">Player</option>
-                        <option value="host">Host</option>
-                </select>
-                </div>
-                   
+                    <div className="m-3">
+                        <label id="role" htmlFor="role" className="form-label m-1 sub_title">Role</label>
+                        <select name="role" className="form-select" value={formData.player ? "player" : "host"} onChange={handleRoleChange}>
+                            <option value="player">Player</option>
+                            <option value="host">Host</option>
+                        </select>
+                    </div>
+
                 </>
             )}
-            <div className="text-center pt-3">
-                <input
-                    type="submit"
-                    className="btn btn-primary"
-                    value={type == 'login' ? 'Iniciar sesión' : 'Registrarse'}
-                />
+            <div className="m-3 text-center pt-3">
+                <button type="submit" className="submit form-control login_singupButton">
+                    <i className="animation"></i>
+                    {type === 'login' ? 'Iniciar sesión' : 'Registrarse'}
+                    <i className="animation"></i>
+                </button>
             </div>
+
         </form>
     );
 };

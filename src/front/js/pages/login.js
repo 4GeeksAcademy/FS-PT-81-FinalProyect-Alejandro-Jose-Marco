@@ -27,8 +27,8 @@ export const Login = () => {
           ></div>
 
           {/* Formulario */}
-          <div className="bg-light w-75 pt-4 pb-4 m-5 formulario__login--bg position-relative shadow-lg rounded-4">
-            <h2 className="text-center fw-bold mb-4 text-primary">Bienvenido</h2>
+          <div className="bg-light w-75 pt-4 pb-4 m-5 formulario__login--bg position-relative cardShadow rounded-4">
+            <h2 className="text-center fw-bold mb-4 mx-3 text-primary title">Login</h2>
 
             {/* Formulario */}
             <Formulario type="login" />
@@ -36,8 +36,8 @@ export const Login = () => {
             <div className="text-center mt-4">
               <p className="fw-bold mb-2">¿Aún no tienes tu cuenta?</p>
               <Link to="/signup">
-                <button className="btn btn-outline-primary text-uppercase p-2 w-50 shadow-sm">
-                  Crea la tuya aquí
+                <button className="btn btn-outline-primary  p-2 w-50 shadow-sm createAcountButton">
+                 Regístrate
                 </button>
               </Link>
             </div>

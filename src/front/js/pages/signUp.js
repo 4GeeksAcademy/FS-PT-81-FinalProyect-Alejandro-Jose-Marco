@@ -26,9 +26,9 @@ export const SignUp = () => {
 
           {/* Formulario */}
           <div className="container d-flex justify-content-center align-items-center mt-5">
-            <div className="card shadow-lg rounded-4 w-75 p-4 bg-light">
+            <div className="cardShadow rounded-4 w-75 p-4 bg-light">
               <div className="card-body">
-                <h3 className="text-center mb-4 fw-bold">Crear Cuenta</h3>
+                <h3 className="text-center mb-3 mx-3 fw-bold title">Registro</h3>
                 <Formulario type="register" />
               </div>
             </div>
