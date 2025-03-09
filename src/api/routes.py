@@ -9,6 +9,7 @@ from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_requir
 from werkzeug.security import generate_password_hash, check_password_hash
 import cloudinary
 import cloudinary.uploader
+import random
 
 api = Blueprint('api', __name__)
 jwt = JWTManager()
@@ -554,9 +555,6 @@ def manage_teams (tournament_id):
             ~Participants.id.in_(db.session.query(Teams.left).filter(Teams.tournament_id == tournament_id, Teams.left.isnot(None))),
             ~Participants.id.in_(db.session.query(Teams.right).filter(Teams.tournament_id == tournament_id, Teams.right.isnot(None)))
         ).all()
-
-        if not participants_unassigned:
-            return jsonify({'msg': 'No hay participantes sin equipo'}), 400
         
         # Buscar equipos sin participantes y los eliminamos
         empty_teams = Teams.query.filter(
@@ -587,7 +585,15 @@ def manage_teams (tournament_id):
             participant_2 = participants_unassigned.pop(0) if participants_unassigned else None
             create_team(tournament_id, participant_1.id, participant_2.id if participant_2 else None)
 
-        return jsonify({'msg': 'Procesamiento de equipos completado'}), 200
+        #Obtenemos datos de todos los equipos del torneo y su cantidad esperada para crear un match.
+        teams = Teams.query.filter_by(tournament_id=tournament_id).all()
+        expected_teams = tournament.participants_amount // 2
+
+        #Si la cantidad de equipos actuales es igual a la esperada y no hay equipos incompletos. Creamos los Matches
+        if len(teams) == expected_teams and not incomplete_teams:
+            create_matches(tournament_id)
+        else:
+            return jsonify({'msg': 'Equipos aún no completos o número de equipos incorrecto'}), 400
 
     except Exception as e:
         return jsonify({'msg': 'Error en la administración de los Teams', 'error': str(e)}), 500
@@ -723,61 +729,42 @@ def get_teams_by_tournament(tournament_id):
 
 
 
-# //_________________________________________MATCH & MATCH_PARTICIPANTS_________________________________________
+# //_________________________________________CREATE MATCH & MATCH_PARTICIPANTS_________________________________________
 
 @api.route('/tournaments/<int:tournament_id>/matches', methods=['POST'])  # POST de las tablas de match de un torneo
 @jwt_required()
 def create_matches(tournament_id):
     try:
-        # Conseguir datos del equipo
+        # Obtener datos del torneo
         tournament = Tournaments.query.get(tournament_id)
         if not tournament:
             return jsonify({'msg': 'Torneo no encontrado'}), 404
 
-        # Conseguir datos de los equipos del torneo
+        # Obtener los equipos del torneo
         teams = Teams.query.filter_by(tournament_id=tournament_id).all()
-        if not teams:
-            return jsonify({'msg': 'No hay equipos en este torneo'}), 400
-        if len(teams) < 2:
-            return jsonify({'msg': 'No hay suficientes equipos para crear un match'}), 400
 
-        # Verificamos si hay equipos que no estan asignados
-        teams_unassigned = []
-        for team in teams:
-            if not Match_participants.query.filter(
-                (Match_participants.team_1 == team.id) | 
-                (Match_participants.team_2 == team.id)).first():
-                teams_unassigned.append(team)
+        random.shuffle(teams)
 
-        # Si todos los equipos han sido asignados
-        if not teams_unassigned:
-            return jsonify({'msg': 'Todos los equipos ya están en un match'}), 400
-        if len(teams_unassigned) < 2:
-            return jsonify({'msg': 'Esperando la formación de otor equipo para crear un match'}), 400
-
-        # Crear matches con equipos no asignados
-        for i in range(0, len(teams_unassigned), 2):
-            new_match = Matches(
+        for i in range(0, len(teams), 2):
+            match = Matches(
                 tournament_id=tournament_id,
-                set_1='0-0',
-                set_2='0-0',
-                set_3='0-0',
-                resume='A espera de jugar el partido',
                 round_number=1,
-                winner_team_id=None
+                winner_team_id=None,
+                set_1="0-0", 
+                set_2="0-0", 
+                set_3="0-0",
+                resume="Partido en espera"
             )
-            db.session.add(new_match)
+
+            db.session.add(match)
             db.session.commit()
 
-            team_1 = teams_unassigned[i]
-            team_2 = teams_unassigned[i + 1] if i + 1 < len(teams_unassigned) else None
-
-            new_match_participants = Match_participants(
-                match_id=new_match.id,
-                team_1=team_1.id,
-                team_2=team_2.id,
+            match_participants = Match_participants(
+                match_id=match.id,
+                team_1=teams[i].id,
+                team_2=teams[i+1].id,
             )
-            db.session.add(new_match_participants)
+            db.session.add(match_participants)
             db.session.commit()
 
 
@@ -795,7 +782,7 @@ def get_matches_by_tournament(tournament_id):
         if not tournament:
             return jsonify({'msg': 'Torneo no encontrado'}), 404
 
-        # Obtener todos los equipos de ese torneo
+        # Obtener todos los matches de este torneo
         matches = Matches.query.filter_by(tournament_id=tournament_id).all()
 
         if not matches:
@@ -812,7 +799,62 @@ def get_matches_by_tournament(tournament_id):
 
 
 
-# //_________________________________________CLOUDINARY_________________________________________
+# _________________________________________Start_tournament_________________________________________
+
+@api.route('/tournaments/<int:tournament_id>/generate_first_round', methods=['POST'])
+@jwt_required()
+def start_tournament(tournament_id):
+    try:
+        # Obtener el torneo
+        tournament = Tournaments.query.get(tournament_id)
+
+        # Verificar si todos los participantes están registrados
+        if tournament.participants_registered != tournament.participants_amount:
+            return jsonify({'msg': 'No hay suficientes participantes para iniciar el torneo'}), 400
+
+        # Verificar que el número de equipos es correcto
+        expected_teams = tournament.participants_amount // 2  # La mitad de los participantes
+        teams = Teams.query.filter_by(tournament_id=tournament_id).all()
+
+        if len(teams) != expected_teams:
+            return jsonify({'msg': f'Se esperaban {expected_teams} equipos, pero hay {len(teams)} registrados'}), 400
+
+        # Mezclar aleatoriamente los equipos
+        random.shuffle(teams)
+
+        # Crear los partidos de la primera ronda
+        matches = []
+        for i in range(0, len(teams), 2):
+            if i + 1 < len(teams):  # Si hay un par de equipos
+                match = Matches(
+                    tournament_id=tournament_id,
+                    round_number=1,
+                    winner_team_id=None,  # Aún no hay ganador
+                    set_1="0-0", set_2="0-0", set_3="0-0",
+                    resume="Partido en espera"
+                )
+                db.session.add(match)
+                db.session.commit()  # Guardamos el partido para obtener su ID
+
+                match_participants = Match_participants(
+                    match_id=match.id,
+                    team_1=teams[i].id,
+                    team_2=teams[i + 1].id
+                )
+                db.session.add(match_participants)
+                matches.append(match_participants)
+
+        db.session.commit()
+
+        return jsonify({'msg': 'Ronda 1 generada con éxito', 'matches': [m.serialize() for m in matches]}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'msg': 'Error al generar la primera ronda', 'error': str(e)}), 500
+
+
+
+# _________________________________________CLOUDINARY_________________________________________
 
 @api.route('/upload', methods=['POST'])
 def upload():

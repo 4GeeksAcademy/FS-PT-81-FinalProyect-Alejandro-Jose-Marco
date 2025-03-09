@@ -128,7 +128,7 @@ class Matches(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'))
     winner_team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=True)
-
+    
     round_number = db.Column(db.Integer, nullable=False)
 
     set_1 = db.Column(db.String(), nullable=False)
