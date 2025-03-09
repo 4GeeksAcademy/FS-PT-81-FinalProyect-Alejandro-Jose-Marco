@@ -1,35 +1,117 @@
 .bracketCard__container {
-  background-color: #f8f9fa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 30px;
+    flex-direction: column;
+}
+
+.row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 .bracketCard__round {
-  background-color: white;
-  border-radius: 10px;
-  padding: 20px;
-
-  max-height: 500px;
-  flex-shrink: 0;
-
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px;
+    width: 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
 }
 
 .bracketCard__roundTitle {
-  min-height: 65px; 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 15px;
 }
 
-.bracketCard__team {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: #333;
+.matchup {
+    width: 100%;
+    margin-bottom: 15px;
+    text-align: center;
 }
 
-.bracketCard__h3 {
-  color: #007bff;
-  font-weight: bold;
-  text-transform: uppercase;
-  font-size: 1.5rem;
-  margin-bottom: 20px;
+.matchup p {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #333;
+    padding: 10px;
+    background-color: #f1f1f1;
+    border-radius: 6px;
+}
+
+.matchup .team {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.bracketCard__connector {
+    position: absolute;
+    width: 2px;
+    background-color: #333;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 50px;
+    left: 100%;
+    margin-left: 10px;
+}
+
+.bracketCard__connector::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -10px;
+    border-left: 2px solid #333;
+    height: 50%;
+}
+
+.bracketCard__verticalConnector {
+    position: absolute;
+    width: 2px;
+    background-color: #333;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 100px;
+    left: 50%;
+    margin-left: -1px;
+}
+
+/* Semi final and final line adjustment */
+.bracketCard__round::after {
+    content: "";
+    position: absolute;
+    height: 2px;
+    background-color: #007bff;
+    bottom: -10px;
+    left: 50%;
+    width: 80%;
+    transform: translateX(-50%);
+}
+
+@media (max-width: 768px) {
+    .row {
+        flex-direction: column;
+    }
+
+    .bracketCard__round {
+        margin: 10px auto;
+    }
+
+    .bracketCard__connector {
+        width: 1px;
+        margin-left: 5px;
+        height: 30px;
+    }
+
+    .bracketCard__verticalConnector {
+        height: 60px;
+    }
 }
