@@ -597,9 +597,21 @@ def manage_teams (tournament_id):
 @jwt_required()
 def create_team(tournament_id, participant_1_id, participant_2_id=None):
     try:
+        # Obtener el nombre de los particiapantes  en caso de que no sea None para crear el nombre del equipo
+        participant1 = Participants.query.get(participant_1_id)
+        name1 = participant1.player_relationship.name if participant1.player_relationship else " "
+
+        if participant_2_id is not None:
+            participant2 = Participants.query.get(participant_2_id)
+            if participant2:
+                name2 = participant2.player_relationship.name if participant2.player_relationship else " "
+
+        team_name = f"{name1} & {name2}"
+
         # Crear el equipo
         new_team = Teams(
             tournament_id=tournament_id,
+            name=team_name,
             left=participant_1_id,
             right=participant_2_id
         )
@@ -613,6 +625,7 @@ def create_team(tournament_id, participant_1_id, participant_2_id=None):
             'msg': 'Equipo creado con éxito',
             'team_id': new_team.id,
             'tournament_id': tournament_id,
+            'team_name': team_name,
             'participant_1_id': participant_1_id,
             'participant_2_id': participant_2_id
         }), 201
@@ -629,20 +642,34 @@ def edit_team(team_id, participant_id):
         # Obtener el equipo desde la base de datos
         team = Teams.query.get(team_id)
 
-        # Asignamos el participante a la parte del equipo que esta libre
+        # Obtener el nombre del participante a añadir
+        participant = Participants.query.get(participant_id)
+        participant_name = participant.player_relationship.name
+
+         # Obtener el nombre actual de ambos miembros del equipo (uno será None)
+        left_name = Participants.query.get(team.left).player_relationship.name if team.left else ""
+        right_name = Participants.query.get(team.right).player_relationship.name if team.right else ""
+
+        # Asignar el ID del participante a la parte del equipo que esta libre
+        # Al miembro del equipo cuyo nombre sea None se le asignará su nombre de player (participant_name)
         if team.left is None:
             team.left = participant_id
+            left_name = participant_name
         elif team.right is None:
             team.right = participant_id
+            right_name = participant_name
         else:
             return jsonify({'msg': 'El equipo ya está completo'}), 400
+        
+        # Actualizar el nombre del equipo
+        team.name = f"{left_name} & {right_name}"
 
-        db.session.add(team)
         db.session.commit()
 
         return jsonify({
             'msg': f'Jugador {participant_id} agregado al equipo {team.id}',
             'team_id': team.id,
+            'team_name': team.name,
             'participant_id': participant_id
         }), 200
 

@@ -159,7 +159,7 @@ class Matches(db.Model):
 class Teams(db.Model):
     __tablename__ = 'teams'
     id = db.Column(db.Integer, primary_key=True)
-    team_number = db.Column(db.Integer)
+    name = db.Column(db.String)
     left = db.Column(db.Integer, db.ForeignKey('participants.id'))
     right = db.Column(db.Integer, db.ForeignKey('participants.id'))
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'))
@@ -175,7 +175,7 @@ class Teams(db.Model):
     def serialize(self):
         return {
         "id": self.id,
-        "team_number": self.team_number,
+        "name": self.name,
         "left": self.left_participant.serialize() if self.left_participant else None,
         "right": self.right_participant.serialize() if self.right_participant else None,
         "tournament_id": self.tournament_id,
