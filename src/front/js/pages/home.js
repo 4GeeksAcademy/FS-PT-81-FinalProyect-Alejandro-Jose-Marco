@@ -18,12 +18,12 @@ export const Home = () => {
 				className="section home__section-1 position-relative d-flex align-items-center justify-content-center"
 				style={{ backgroundImage: `url(${process.env.BACKEND_URL + "/padel-court.jpg"})` }}
 			>
-				<div className="position-absolute bottom-0 start-50 translate-middle-x text-center w-100 home__section-1--bg">
+				{/* <div className="position-absolute bottom-0 start-50 translate-middle-x text-center w-100 home__section-1--bg">
 					<h1>¿Qué es PadelZone?</h1>
 					<p className="mt-3">
 						La plataforma perfecta para organizar y participar en eventos deportivos, diseñada para la creación y organización de torneos
 					</p>
-				</div>
+				</div> */}
 			</section>
 			<section className="section home__section-2 bg-light">
 				<h1 className="text-center p-5">
@@ -117,8 +117,8 @@ export const Home = () => {
 						<div className="col-lg-4 col-md-6">
 							<div className="card shadow-lg rounded-3 overflow-hidden">
 								<div className="card-body d-flex flex-column p-4">
-								<img
-										src={store.tournaments.length > 2 ? store.tournaments[store.tournaments.length - 3].image: "Imagen torneo 3"}
+									<img
+										src={store.tournaments.length > 2 ? store.tournaments[store.tournaments.length - 3].image : "Imagen torneo 3"}
 										alt="Profile-img"
 										className="rounded-circle border border-3 align-self-center"
 										style={{ width: "200px", height: "200px", objectFit: "cover" }}
@@ -161,10 +161,13 @@ export const Home = () => {
 
 			<section className="section home__section-3">
 				<div className="container">
-					<div className="row">
-
-						<div className="col-md-4 my-3">
-							<div className="card h-100 d-flex flex-column bg-dark text-white">
+					<div className="d-flex flex-column align-items-center">
+						<div className="col-md-8 my-3">
+							<div className="card h-100 d-flex flex-row bg-dark text-white">
+								<img src="https://media.istockphoto.com/id/1363976548/es/foto/raqueta-de-p%C3%A1del-y-pelotas-en-la-pista-de-p%C3%A1del-azul.jpg?s=612x612&w=0&k=20&c=SKdeeGEcpZIxKbOUeCuEzBHcLD8CUOsNtMsZ-r9rLq4="
+									className="card-img-left img-fluid"
+									alt="Encuentra Torneos"
+								/>
 								<div className="card-body d-flex flex-column p-4">
 									<h5 className="card-title text-center">Encuentra Torneos</h5>
 									<p className="card-text flex-grow-1">Encuentra torneos en tu ciudad y participa de forma fácil y sencilla</p>
@@ -175,9 +178,13 @@ export const Home = () => {
 							</div>
 						</div>
 
-						<div className="col-md-4 my-3">
-							<div className="card h-100 d-flex flex-column bg-dark text-white">
-								<div className="card-body d-flex flex-column">
+						<div className="col-md-8 my-3">
+							<div className="card h-100 d-flex flex-row bg-dark text-white">
+								<img src="https://media.istockphoto.com/id/1517473680/es/foto/jugador-de-p%C3%A1del-haciendo-un-esfuerzo-mientras-golpea-la-pelota-durante-un-partido-en-pista.jpg?s=612x612&w=0&k=20&c=f3z4w6JGgYVSIVJX94mGC01SYqSQKqqQqZil-yTvxMM="
+									className="card-img-left img-fluid"
+									alt="Crea Eventos"
+								/>
+								<div className="card-body d-flex flex-column p-4">
 									<h5 className="card-title text-center">Crea Eventos</h5>
 									<p className="card-text flex-grow-1">Crea eventos deportivos de forma sencilla gracias a nuestras herramientas de creación de eventos personalizados</p>
 									<Link to="/create_tournament" className="btn btn-warning align-self-center mt-auto">
@@ -187,12 +194,18 @@ export const Home = () => {
 							</div>
 						</div>
 
-						<div className="col-md-4 my-3">
-							<div className="card h-100 d-flex flex-column bg-dark text-white">
-								<div className="card-body d-flex flex-column">
+						<div className="col-md-8 my-3">
+							<div className="card h-100 d-flex flex-row bg-dark text-white">
+								<img src="https://media.istockphoto.com/id/1402900023/es/foto/pareja-jugando-al-p%C3%A1del-en-pista-hola-cinco-gestos-de-juego-limpio.jpg?s=612x612&w=0&k=20&c=k8zUifR8OyQIMuQJDF5JSqEMnXRSw_X1lS8K-6hsIfM="
+									className="card-img-left img-fluid"
+									alt="Conecta con jugadores"
+								/>
+								<div className="card-body d-flex flex-column p-4">
 									<h5 className="card-title text-center">Conecta con jugadores</h5>
 									<p className="card-text flex-grow-1">Participa solo, con amigos, o tal vez prefieras encontrar nuevos compañeros de tu nivel dentro de nuestra plataforma</p>
-									<a href="#" className="btn btn-outline-warning align-self-center mt-auto">Explorar</a>
+									<Link to="/create_tournament" className="btn btn-warning align-self-center mt-auto">
+										Explorar
+									</Link>
 								</div>
 							</div>
 						</div>
@@ -200,6 +213,7 @@ export const Home = () => {
 					</div>
 				</div>
 			</section>
+
 		</div>
 	);
 };
