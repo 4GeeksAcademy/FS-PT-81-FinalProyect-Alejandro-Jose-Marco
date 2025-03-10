@@ -227,5 +227,3 @@ class Match_participants(db.Model):
             "team_2": self.team_2_relationship.serialize() if self.team_2_relationship else None,
             "match_id" : self.match_id,
     }
-
-
