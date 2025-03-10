@@ -1,7 +1,6 @@
 import React, { useContext, useEffect } from "react";
 import { Context } from "../store/appContext";
 import "../../styles/home.css";
-import { Formulario } from "../component/formulario.jsx";
 import { Link } from "react-router-dom";
 import 'font-awesome/css/font-awesome.min.css';
 

@@ -4,16 +4,16 @@ import { FaGithub, FaInstagram, FaXTwitter } from "react-icons/fa6";
 
 
 export const Footer = () => (
-	<footer className="footer mt-auto p-5 bg-dark text-white d-flex justify-content-between align-items-center">
+	<footer className="footer mt-auto p-5 bg-dark text-white d-flex flex-column flex-lg-row justify-content-between align-items-center">
 
-		<h2 className="mb-0"><strong>PadelZone</strong></h2>
+		<h2 className="mb-2 text-primary"><strong>PadelZone</strong></h2>
 
-		<div>
-			<p className="mb-3 text-center">Cookie Policy · Privacy Policy</p>
-			<p className="mb-0">© {new Date().getFullYear()} 4Geeks Academy Final Project · Alejandro, José y Marcos · All right reserved</p>
+		<div className="my-4">
+			<p className="mb-2 text-center">Cookie Policy · Privacy Policy</p>
+			<p className="mb-0 text-center">© {new Date().getFullYear()} 4Geeks Academy Final Project · Alejandro, José y Marcos · All right reserved</p>
 		</div>
 
-		<div>
+		<div className="mt-2">
 			<div className="d-flex gap-3">
 				<a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-light">
 					<FaGithub size={24} />

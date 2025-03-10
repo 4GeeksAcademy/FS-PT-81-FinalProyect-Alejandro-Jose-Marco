@@ -12,7 +12,7 @@ const getState = ({ getStore, getActions, setStore }) => {
 		},
 		actions: {
 
-            /////////////////////////////////////////USER/////////////////////////////////////////
+            //_________________________________________USER_________________________________________
 
             getUserData: async () => {
                 try {
@@ -102,7 +102,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
 
 
-            /////////////////////////////////////////PLAYER/////////////////////////////////////////
+            //_________________________________________PLAYER_________________________________________
 
             updatePlayer: async (playerData) => {   //PUT ONE PLAYER
                 try {
@@ -186,7 +186,7 @@ const getState = ({ getStore, getActions, setStore }) => {
 
 
 
-            /////////////////////////////////////////HOST/////////////////////////////////////////
+            //_________________________________________HOST_________________________________________
 
             updateHost: async (hostData) => {  //PUT ONE HOST
                 try {
@@ -242,7 +242,7 @@ const getState = ({ getStore, getActions, setStore }) => {
 
 
 
-            /////////////////////////////////////////TOURNAMENT/////////////////////////////////////////
+            //_________________________________________TOURNAMENT_________________________________________
         
             postTournament: async (tournamentData) => {  //POST TOURNAMENT
                 try {
@@ -346,7 +346,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             
 
 
-            /////////////////////////////////////////CHECK/////////////////////////////////////////
+            //_________________________________________CHECK_________________________________________
         
             checkUser: async () => {    //Comprueba si el usuario logueado es player o Host. Devuelve True si es player
                 try {
@@ -375,7 +375,7 @@ const getState = ({ getStore, getActions, setStore }) => {
 
 
 
-            /////////////////////////////////////////PARTICIPANTS/////////////////////////////////////////
+            //_________________________________________PARTICIPANTS_________________________________________
 
             registerParticipant: async (tournamentId) => {  //Post participantes
                 try {
@@ -484,7 +484,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             
 
 
-            /////////////////////////////////////////TEAMS/////////////////////////////////////////
+            //_________________________________________TEAMS_________________________________________
             
             getTournamentTeams: async (tournamentId) => {       //GET todos los equipos de un torneo
                 try {
@@ -512,7 +512,38 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
 
 
-            /////////////////////////////////////////MATCHES/////////////////////////////////////////
+            removeTeam: async (tournamentId, teamId) => {      //Delete un team de un torneo
+                try {
+                    const resp = await fetch(`${process.env.BACKEND_URL}/api/tournaments/${tournamentId}/remove_team/${teamId}`, {
+                        method: "DELETE",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+            
+                    const data = await resp.json();
+            
+                    if (resp.ok) {
+                        alert("Equipo eliminado del torneo");
+            
+                        setStore({
+                            torneo: { ...getStore().torneo, teams: data.teams }
+                        });
+
+                        return data;
+
+                    } else {
+                        alert(data.msg || "Error al eliminar el equipo del torneo");
+                    }
+                } catch (error) {
+                    console.error("Error en removeTeam:", error);
+                }
+            },
+
+
+            
+            //_________________________________________MATCHES_________________________________________
             
             getTournamentMatches: async (tournamentId) => {       //GET todos los matches de un torneo
                 try {

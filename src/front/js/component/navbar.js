@@ -8,12 +8,11 @@ import "../../styles/navbar.css";
 
 export const Navbar = () => {
 	const { store, actions } = useContext(Context);
-	console.log("Usuario:", store.user);
 	return (
 		<nav className="navbar navbar-light bg-dark py-3">
 			<div className="container-fluid d-flex justify-content-between mx-0 px-5">
 				<Link to="/" className="text-decoration-none">
-					<span className="navbar-brand m-0 fs-2 text-light"><strong>PadelZone</strong></span>
+					<span className="navbar-brand m-0 fs-2 text-primary"><strong>PadelZone</strong></span>
 				</Link>
 				{store.user && store.user.player === false && (
       			<Link to="/tournament/create" className="text-decoration-none">
@@ -24,7 +23,7 @@ export const Navbar = () => {
 				<div className="d-flex">
 					<div className="ml-auto">
 						<Link to="/tournament/list">
-							<button className="btn text-light">Torneos</button>
+							<button className="btn btn-primary">Torneos</button>
 						</Link>
 					</div>
 

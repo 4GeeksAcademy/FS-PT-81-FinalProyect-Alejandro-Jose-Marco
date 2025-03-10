@@ -1,6 +1,4 @@
-import React, { useContext, useState, } from "react";
-import { Context } from "../store/appContext";
-import { useNavigate } from "react-router-dom";
+import React from "react";
 import "../../styles/bracketsCard.css";
 
 export const BracketCard16 = () => {

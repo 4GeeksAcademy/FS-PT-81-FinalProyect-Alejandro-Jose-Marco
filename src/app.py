@@ -35,6 +35,7 @@ cloudinary.config(
     api_secret=os.getenv('CLOUDINARY_API_SECRET')
 )
 
+
 # database condiguration
 db_url = os.getenv("DATABASE_URL")
 if db_url is not None:

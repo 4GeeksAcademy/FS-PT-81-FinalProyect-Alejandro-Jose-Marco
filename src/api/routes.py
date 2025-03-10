@@ -9,6 +9,7 @@ from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_requir
 from werkzeug.security import generate_password_hash, check_password_hash
 import cloudinary
 import cloudinary.uploader
+import random
 
 api = Blueprint('api', __name__)
 jwt = JWTManager()
@@ -27,7 +28,7 @@ def handle_hello():
 
 
 
-# /////////////////////////////////////////USER/////////////////////////////////////////
+# _________________________________________USER_________________________________________
 
 @api.route('/signup', methods=['POST'])
 def register():
@@ -107,8 +108,28 @@ def protected():
     return jsonify({'success': False, 'msg': 'Token erroneo'})
 
 
+# _________________________________________LOGOUT_________________________________________
 
-# /////////////////////////////////////////PLAYER/////////////////////////////////////////
+blacklisted_tokens = set()
+
+@api.route('/logout', methods=['POST'])
+@jwt_required()
+def logout():
+    # Obtén el token del usuario actual
+    jti = get_jwt()['jti']  # jti es el identificador único del token
+    # Añade el token a la lista negra
+    blacklisted_tokens.add(jti)
+    # Devuelve un mensaje de éxito
+    return jsonify({'msg': 'Sesión cerrada exitosamente'}), 200
+
+# Verifica si un token está en la lista negra
+@jwt.token_in_blocklist_loader
+def check_if_token_in_blacklist(jwt_header, jwt_payload):
+    jti = jwt_payload['jti']
+    return jti in blacklisted_tokens
+
+
+# _________________________________________PLAYER_________________________________________
 
 @api.route('/editPlayers', methods=['PUT'])
 @jwt_required()
@@ -128,7 +149,7 @@ def editPlayer():
         return jsonify({'msg': 'Todos los campos son necesarios'}), 400
 
     # Conecta player con user y Buscar al jugador por ID
-    player = Players.query.join(Users, Users.id == Players.id).filter(Users.id == id).first()
+    player = Players.query.join(Users, Users.player_id == Players.id).filter(Users.id == id).first()
 
     if not player:
         return jsonify({'msg': 'El jugador no existe'}), 404
@@ -181,7 +202,7 @@ def get_player():
 
 
 
-# /////////////////////////////////////////HOST/////////////////////////////////////////
+# _________________________________________HOST_________________________________________
 
 @api.route('/getHost', methods=['GET'])    # Mostrar lista de perfiles de todos los hosts
 def get_hosts():
@@ -246,7 +267,7 @@ def edit_host():
     
 
 
-# /////////////////////////////////////CHECK TIPO USUARIO/////////////////////////////////////
+# //_________________________________________CHECK TIPO USUARIO_________________________________________
 
 @api.route('/check', methods=['GET'])
 @jwt_required()
@@ -262,7 +283,7 @@ def checkUser():
     
     
 
-# /////////////////////////////////////////TOURNAMENT/////////////////////////////////////////
+# //_________________________________________TOURNAMENT_________________________________________
 
 @api.route('/tournaments', methods=['POST'])
 @jwt_required()
@@ -373,7 +394,7 @@ def delete_tournament(id):
 
 
 
-# /////////////////////////////////////////PARTICIPANTS/////////////////////////////////////////
+# //_________________________________________PARTICIPANTS_________________________________________
 
 @api.route('/tournaments/<int:tournament_id>/participate', methods=['POST'])        #POST todos los participantes de un torneo
 @jwt_required()
@@ -424,7 +445,7 @@ def participate_in_tournament(tournament_id):
 
         db.session.commit()
 
-        create_team(tournament_id)
+        manage_teams(tournament_id)
 
         return jsonify({
             'msg': 'Participación registrada con éxito', 
@@ -494,14 +515,16 @@ def get_participant(tournament_id, player_id):
 @jwt_required()
 def remove_participant(tournament_id, player_id):
     try:
-        participant = Participants.query.filter_by(tournament_id=tournament_id, player_id=player_id).first()
 
+        # Verificar si el participante esta registrado en el torneo
+        participant = Participants.query.filter_by(tournament_id=tournament_id, player_id=player_id).first()
         if not participant:
             return jsonify({'msg': 'El jugador no está registrado en este torneo'}), 404
 
         db.session.delete(participant)
         db.session.commit()
 
+        # Actualizar el número de participantes registrados en el torneo
         tournament = Tournaments.query.get(tournament_id)
         tournament.participants_registered = Participants.query.filter_by(tournament_id=tournament.id).count()
         
@@ -510,65 +533,178 @@ def remove_participant(tournament_id, player_id):
         return jsonify({'msg': 'Jugador eliminado del torneo:', 'participants_registered': tournament.participants_registered}), 200
     
     except Exception as e:
+        db.session.rollback()
         return jsonify({'msg': 'Error al eliminar el jugador', 'error': str(e)}), 500
     
 
 
-# ////////////////////////////////////////////TEAMS////////////////////////////////////////////
+# __________________________________________________TEAMS__________________________________________________
 
-@api.route('/tournaments/<int:tournament_id>/teams', methods=['POST'])        #POST todos los equipos de un torneo
+@api.route('/tournaments/<int:tournament_id>/manage_teams', methods=['GET'])     #Verificamos el estado de los equipos.
 @jwt_required()
-def create_team(tournament_id):
+def manage_teams (tournament_id):
     try:
-
-        # Conseguir datos del torneo
+        # Obtener el torneo
         tournament = Tournaments.query.get(tournament_id)
         if not tournament:
             return jsonify({'msg': 'Torneo no encontrado'}), 404
+
+        #Obtener los participantes del torneo sin equipo
+        participants_unassigned = Participants.query.filter(
+            Participants.tournament_id == tournament_id,
+            ~Participants.id.in_(db.session.query(Teams.left).filter(Teams.tournament_id == tournament_id, Teams.left.isnot(None))),
+            ~Participants.id.in_(db.session.query(Teams.right).filter(Teams.tournament_id == tournament_id, Teams.right.isnot(None)))
+        ).all()
         
-        # Conseguir datos de los participantes del torneo
-        participants = Participants.query.filter_by(tournament_id=tournament_id).all()
-        if not participants:
-            return jsonify({'msg': 'No hay participantes en este torneo'}), 404
-
-        #Verificamos si hay participantes que no estan asignados
-        participants_unasigned = []
-        for participant in participants:
-            if not Teams.query.filter((Teams.left == participant.id) | (Teams.right == participant.id)).first():
-                participants_unasigned.append(participant)
-
-        # Si todos los participantes han sido asignados
-        if not participants_unasigned:
-            return jsonify({'msg': 'Todos los participantes ya están en un equipo'}), 400
-
-        existing_teams_count = Teams.query.filter_by(tournament_id=tournament_id).count()
-        team_number = existing_teams_count + 1
+        # Buscar equipos sin participantes y los eliminamos
+        empty_teams = Teams.query.filter(
+            Teams.tournament_id == tournament_id,
+            (Teams.left == None) & (Teams.right == None)
+        ).all()
         
-        while len(participants_unasigned) >= 2:
-            new_team = Teams(
-                team_number=team_number,
-                left=participants_unasigned[0].id,
-                right=participants_unasigned[1].id,
-                tournament_id=tournament_id
-            )
+        for team in empty_teams:
+            remove_team(tournament_id, team.id)
 
-            db.session.add(new_team)
-            db.session.commit()
+        # Buscamos equipos a los que les falte un participante.
+        incomplete_teams = Teams.query.filter(
+            Teams.tournament_id == tournament_id,
+            (Teams.left == None) | (Teams.right == None)
+        ).all()
 
-            #Elimina los 2 primeros participantes de la lista que ya han sido asignados a un equipo
-            participants_unasigned = participants_unasigned[2:]
-            team_number += 1
-        
+        #Mientras haya equipos incompletos se ejecuta. Si hay participantes libres llamamos a edit_team (PUT), si no terminamos función
+        for team in incomplete_teams:
+            if participants_unassigned:
+                participant = participants_unassigned.pop(0)
+                edit_team(team.id, participant.id)
+            else:
+                return jsonify({'msg': 'No hay más participantes disponibles para asignar a equipos incompletos'}), 200
+
+        #Mientras aun queden participantes libres, pero todos los equipos creados están completos. LLamamos a create_team (POST)
+        while participants_unassigned:
+            participant_1 = participants_unassigned.pop(0)
+            participant_2 = participants_unassigned.pop(0) if participants_unassigned else None
+            create_team(tournament_id, participant_1.id, participant_2.id if participant_2 else None)
+
+        #Obtenemos datos de todos los equipos del torneo y su cantidad esperada para crear un match.
+        teams = Teams.query.filter_by(tournament_id=tournament_id).all()
+        expected_teams = tournament.participants_amount // 2
+
+        #Si la cantidad de equipos actuales es igual a la esperada y no hay equipos incompletos. Creamos los Matches
+        if len(teams) == expected_teams and not incomplete_teams:
+            create_matches(tournament_id)
+        else:
+            return jsonify({'msg': 'Equipos aún no completos o número de equipos incorrecto'}), 400
+
+    except Exception as e:
+        return jsonify({'msg': 'Error en la administración de los Teams', 'error': str(e)}), 500
+
+
+@api.route('/tournaments/<int:tournament_id>/create_team', methods=['POST'])        #POST equipo de un torneo
+@jwt_required()
+def create_team(tournament_id, participant_1_id, participant_2_id=None):
+    try:
+        # Obtener el nombre de los particiapantes  en caso de que no sea None para crear el nombre del equipo
+        participant1 = Participants.query.get(participant_1_id)
+        name1 = participant1.player_relationship.name if participant1.player_relationship else " "
+
+        if participant_2_id is not None:
+            participant2 = Participants.query.get(participant_2_id)
+            if participant2:
+                name2 = participant2.player_relationship.name if participant2.player_relationship else " "
+
+        team_name = f"{name1} & {name2}"
+
+        # Crear el equipo
+        new_team = Teams(
+            tournament_id=tournament_id,
+            name=team_name,
+            left=participant_1_id,
+            right=participant_2_id
+        )
+
+        db.session.add(new_team)
+        db.session.commit()
+
         create_matches(tournament_id)
 
-        return jsonify({'msg': 'Equipos creados con éxito'}), 201
+        return jsonify({
+            'msg': 'Equipo creado con éxito',
+            'team_id': new_team.id,
+            'tournament_id': tournament_id,
+            'team_name': team_name,
+            'participant_1_id': participant_1_id,
+            'participant_2_id': participant_2_id
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'msg': 'Error al crear un equipo', 'error': str(e)}), 500
+
+
+@api.route('/tournaments/<int:tournament_id>/edit_team/<int:team_id>', methods=['PUT'])        #PUT equipo de un torneo
+@jwt_required()
+def edit_team(team_id, participant_id):
+    try:
+        # Obtener el equipo desde la base de datos
+        team = Teams.query.get(team_id)
+
+        # Obtener el nombre del participante a añadir
+        participant = Participants.query.get(participant_id)
+        participant_name = participant.player_relationship.name
+
+         # Obtener el nombre actual de ambos miembros del equipo (uno será None)
+        left_name = Participants.query.get(team.left).player_relationship.name if team.left else ""
+        right_name = Participants.query.get(team.right).player_relationship.name if team.right else ""
+
+        # Asignar el ID del participante a la parte del equipo que esta libre
+        # Al miembro del equipo cuyo nombre sea None se le asignará su nombre de player (participant_name)
+        if team.left is None:
+            team.left = participant_id
+            left_name = participant_name
+        elif team.right is None:
+            team.right = participant_id
+            right_name = participant_name
+        else:
+            return jsonify({'msg': 'El equipo ya está completo'}), 400
+        
+        # Actualizar el nombre del equipo
+        team.name = f"{left_name} & {right_name}"
+
+        db.session.commit()
+
+        return jsonify({
+            'msg': f'Jugador {participant_id} agregado al equipo {team.id}',
+            'team_id': team.id,
+            'team_name': team.name,
+            'participant_id': participant_id
+        }), 200
 
     except Exception as e:
         db.session.rollback()
         return jsonify({'msg': 'Error al postera un equipo', 'error': str(e)}), 500
+    
+
+@api.route('/tournaments/<int:tournament_id>/remove_team/<int:team_id>', methods=['DELETE'])    #DELETE equipo de un torneo
+@jwt_required()
+def remove_team(tournament_id, team_id):
+    try:
+
+        team = Teams.query.get(team_id)
+
+        db.session.delete(team)
+        db.session.commit()
+
+        manage_teams (tournament_id)
+
+        return jsonify({'msg': f'Equipo {team_id} eliminado con éxito'}), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'msg': 'Error al eliminar el equipo', 'error': str(e)}), 500
 
 
 @api.route('/tournaments/<int:tournament_id>/teams', methods=['GET'])        #GET todos los equipos de un torneo
+@jwt_required()
 def get_teams_by_tournament(tournament_id):
     try:
         # Verificar si el torneo existe
@@ -593,61 +729,44 @@ def get_teams_by_tournament(tournament_id):
 
 
 
-# //////////////////////////////////////MATCH & MATCH_PARTICIPANTS//////////////////////////////////////
+# //_________________________________________CREATE MATCH & MATCH_PARTICIPANTS_________________________________________
 
 @api.route('/tournaments/<int:tournament_id>/matches', methods=['POST'])  # POST de las tablas de match de un torneo
 @jwt_required()
 def create_matches(tournament_id):
     try:
-        # Conseguir datos del equipo
+        # Obtener datos del torneo
         tournament = Tournaments.query.get(tournament_id)
         if not tournament:
             return jsonify({'msg': 'Torneo no encontrado'}), 404
 
-        # Conseguir datos de los equipos del torneo
+        # Obtener los equipos del torneo
         teams = Teams.query.filter_by(tournament_id=tournament_id).all()
-        if not teams:
-            return jsonify({'msg': 'No hay equipos en este torneo'}), 400
-        if len(teams) < 2:
-            return jsonify({'msg': 'No hay suficientes equipos para crear un match'}), 400
 
-        # Verificamos si hay equipos que no estan asignados
-        teams_unassigned = []
-        for team in teams:
-            if not Match_participants.query.filter(
-                (Match_participants.team_1 == team.id) | 
-                (Match_participants.team_2 == team.id)).first():
-                teams_unassigned.append(team)
+        random.shuffle(teams)
 
-        # Si todos los equipos han sido asignados
-        if not teams_unassigned:
-            return jsonify({'msg': 'Todos los equipos ya están en un match'}), 400
-        if len(teams_unassigned) < 2:
-            return jsonify({'msg': 'Esperando la formación de otor equipo para crear un match'}), 400
-
-        # Crear matches con equipos no asignados
-        while len(teams_unassigned) >= 2:
-            new_match = Matches(
+        for i in range(0, len(teams), 2):
+            match = Matches(
                 tournament_id=tournament_id,
-                set_1='0-0',
-                set_2='0-0',
-                set_3='0-0',
-                resume='A espera de jugar el partido'
+                round_number=1,
+                winner_team_id=None,
+                set_1="0-0", 
+                set_2="0-0", 
+                set_3="0-0",
+                resume="Partido en espera"
             )
-            db.session.add(new_match)
+
+            db.session.add(match)
             db.session.commit()
 
-            new_match_participants = Match_participants(
-                match_id=new_match.id,
-                team_1=teams_unassigned[0].id,
-                team_2=teams_unassigned[1].id,
-                winner=False
+            match_participants = Match_participants(
+                match_id=match.id,
+                team_1=teams[i].id,
+                team_2=teams[i+1].id,
             )
-            db.session.add(new_match_participants)
+            db.session.add(match_participants)
             db.session.commit()
 
-            #Elimina los 2 primeros equipos de la lista que ya han sido asignados a un match
-            teams_unassigned = teams_unassigned[2:]
 
         return jsonify({'msg': 'Matches creados con éxito'}), 201
 
@@ -663,7 +782,7 @@ def get_matches_by_tournament(tournament_id):
         if not tournament:
             return jsonify({'msg': 'Torneo no encontrado'}), 404
 
-        # Obtener todos los equipos de ese torneo
+        # Obtener todos los matches de este torneo
         matches = Matches.query.filter_by(tournament_id=tournament_id).all()
 
         if not matches:
@@ -680,7 +799,62 @@ def get_matches_by_tournament(tournament_id):
 
 
 
-# /////////////////////////////////////////CLOUDINARY/////////////////////////////////////////
+# _________________________________________Start_tournament_________________________________________
+
+@api.route('/tournaments/<int:tournament_id>/generate_first_round', methods=['POST'])
+@jwt_required()
+def start_tournament(tournament_id):
+    try:
+        # Obtener el torneo
+        tournament = Tournaments.query.get(tournament_id)
+
+        # Verificar si todos los participantes están registrados
+        if tournament.participants_registered != tournament.participants_amount:
+            return jsonify({'msg': 'No hay suficientes participantes para iniciar el torneo'}), 400
+
+        # Verificar que el número de equipos es correcto
+        expected_teams = tournament.participants_amount // 2  # La mitad de los participantes
+        teams = Teams.query.filter_by(tournament_id=tournament_id).all()
+
+        if len(teams) != expected_teams:
+            return jsonify({'msg': f'Se esperaban {expected_teams} equipos, pero hay {len(teams)} registrados'}), 400
+
+        # Mezclar aleatoriamente los equipos
+        random.shuffle(teams)
+
+        # Crear los partidos de la primera ronda
+        matches = []
+        for i in range(0, len(teams), 2):
+            if i + 1 < len(teams):  # Si hay un par de equipos
+                match = Matches(
+                    tournament_id=tournament_id,
+                    round_number=1,
+                    winner_team_id=None,  # Aún no hay ganador
+                    set_1="0-0", set_2="0-0", set_3="0-0",
+                    resume="Partido en espera"
+                )
+                db.session.add(match)
+                db.session.commit()  # Guardamos el partido para obtener su ID
+
+                match_participants = Match_participants(
+                    match_id=match.id,
+                    team_1=teams[i].id,
+                    team_2=teams[i + 1].id
+                )
+                db.session.add(match_participants)
+                matches.append(match_participants)
+
+        db.session.commit()
+
+        return jsonify({'msg': 'Ronda 1 generada con éxito', 'matches': [m.serialize() for m in matches]}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'msg': 'Error al generar la primera ronda', 'error': str(e)}), 500
+
+
+
+# _________________________________________CLOUDINARY_________________________________________
 
 @api.route('/upload', methods=['POST'])
 def upload():
@@ -690,24 +864,3 @@ def upload():
         print('-------------la url donde esta la imagen-------------', upload)
         return jsonify(upload)
     return jsonify({"error": "No file uploaded"}), 400
-
-
-
-# /////////////////////////////////////////LOGOUT/////////////////////////////////////////
-blacklisted_tokens = set()
-
-@api.route('/logout', methods=['POST'])
-@jwt_required()
-def logout():
-    # Obtén el token del usuario actual
-    jti = get_jwt()['jti']  # jti es el identificador único del token
-    # Añade el token a la lista negra
-    blacklisted_tokens.add(jti)
-    # Devuelve un mensaje de éxito
-    return jsonify({'msg': 'Sesión cerrada exitosamente'}), 200
-
-# Verifica si un token está en la lista negra
-@jwt.token_in_blocklist_loader
-def check_if_token_in_blacklist(jwt_header, jwt_payload):
-    jti = jwt_payload['jti']
-    return jti in blacklisted_tokens
