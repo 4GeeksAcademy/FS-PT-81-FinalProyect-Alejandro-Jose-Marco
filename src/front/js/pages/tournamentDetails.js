@@ -18,6 +18,7 @@ export const TournamentDetails = () => {
         if (params.id) {
             actions.getOneTournament(params.id);
             actions.getTournamentParticipants(params.id)
+            actions.getTournamentMatches(params.id)
         }
     }, [params.id]);
 

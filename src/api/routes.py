@@ -576,8 +576,6 @@ def manage_teams (tournament_id):
             if participants_unassigned:
                 participant = participants_unassigned.pop(0)
                 edit_team(team.id, participant.id)
-            else:
-                return jsonify({'msg': 'No hay más participantes disponibles para asignar a equipos incompletos'}), 200
 
         #Mientras aun queden participantes libres, pero todos los equipos creados están completos. LLamamos a create_team (POST)
         while participants_unassigned:
@@ -588,6 +586,12 @@ def manage_teams (tournament_id):
         #Obtenemos datos de todos los equipos del torneo y su cantidad esperada para crear un match.
         teams = Teams.query.filter_by(tournament_id=tournament_id).all()
         expected_teams = tournament.participants_amount // 2
+
+        # Actualizamos de nuevo los equipos a los que les falte un participante.
+        incomplete_teams = Teams.query.filter(
+            Teams.tournament_id == tournament_id,
+            (Teams.left == None) | (Teams.right == None)
+        ).all()
 
         #Si la cantidad de equipos actuales es igual a la esperada y no hay equipos incompletos. Creamos los Matches
         if len(teams) == expected_teams and not incomplete_teams:
@@ -624,8 +628,6 @@ def create_team(tournament_id, participant_1_id, participant_2_id=None):
 
         db.session.add(new_team)
         db.session.commit()
-
-        create_matches(tournament_id)
 
         return jsonify({
             'msg': 'Equipo creado con éxito',
@@ -735,6 +737,8 @@ def get_teams_by_tournament(tournament_id):
 @jwt_required()
 def create_matches(tournament_id):
     try:
+        print("Entramos a la creación de matches")
+
         # Obtener datos del torneo
         tournament = Tournaments.query.get(tournament_id)
         if not tournament:

@@ -563,7 +563,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                         });
 
                     } else {
-                        alert(data.msg || "Error al obtener los matches del torneo");
+                        console.error("Error al obtener los matches:", data.msg);
                     }
                 } catch (error) {
                     console.error("Error en getTournamentMatches:", error);
